@@ -24,5 +24,5 @@ int main() {
 
 
 ## Credits ✒️
-    - [GoddessZex](https://github.com/GoddessZex)
-    - [kernelwernel](https://github.com/kernelwernel)
+- [GoddessZex](https://github.com/GoddessZex)
+- [kernelwernel](https://github.com/kernelwernel)
