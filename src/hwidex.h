@@ -5,6 +5,7 @@
 #include <sstream>
 #include <array>
 #include <thread>
+#include <cstring>
 #include <iostream> // temporary
 
 
@@ -29,6 +30,9 @@
 #include <iptypes.h>
 #include <iphlpapi.h>
 #include <intrin.h>
+#elif(LINUX)
+#include <cpuid.h>
+#include <x86intrin.h>
 #endif
 
 /**
@@ -45,33 +49,74 @@
 
 struct HWID {
 private:
+    using u32 = std::uint32_t;
+    using i32 = std::int32_t;
+
     // check for cpuid presence and accessibility
-    inline bool CheckCpuid() noexcept {
-        int info[4];
+    static inline bool CheckCpuid() noexcept {
+        #if \
+        ( \
+            !defined(__x86_64__) && \
+            !defined(__i386__) && \
+            !defined(_M_IX86) && \
+            !defined(_M_X64) \
+        )
+        return false;
+        #endif
+
+        #if (MSVC)
+        i32 info[4];
         __cpuid(info, 0);
         return (info[0] >= 1);
+        #elif (LINUX)
+        u32 ext = 0;
+        return (__get_cpuid_max(ext, nullptr) > 0);
+        #else
+        return false;
+        #endif
     }
 
+    static void Cpuid
+    (
+        u32 &a, u32 &b, u32 &c, u32 &d, 
+        const u32 a_leaf,
+        const u32 c_leaf = 0xFF  // dummy value if not set manually
+    ) {
+        #if (MSVC)
+            i32 x[4];
+            __cpuidex((i32*)x, a_leaf, c_leaf);
+            a = static_cast<u32>(x[0]);
+            b = static_cast<u32>(x[1]);
+            c = static_cast<u32>(x[2]);
+            d = static_cast<u32>(x[3]);
+        #elif (LINUX)
+            __cpuid_count(a_leaf, c_leaf, a, b, c, d);
+        #endif
+    };
+
+    static void Cpuid
+    (
+        i32 x[4],
+        const u32 a_leaf,
+        const u32 c_leaf = 0xFF
+    ) {
+        #if (MSVC)
+            __cpuidex((i32*)x, a_leaf, c_leaf);
+        #elif (LINUX)
+            __cpuid_count(a_leaf, c_leaf, x[0], x[1], x[2], x[3]);
+        #endif
+    };
+
     // fetch CPU brand
-    std::string GetCpuBrand() {
-        using u32 = unsigned int;
+    static std::string GetCpuBrand() {
         std::stringstream ss;
 
         if (CheckCpuid()) {
-            auto cpuid = [](u32& a, u32& b, u32& c, u32& d, const u32 a_leaf, const u32 c_leaf = 0xFF) {
-                int x[4];
-                __cpuidex(x, a_leaf, c_leaf);
-                a = static_cast<u32>(x[0]);
-                b = static_cast<u32>(x[1]);
-                c = static_cast<u32>(x[2]);
-                d = static_cast<u32>(x[3]);
-                };
-
             u32 sig_reg[3] = { 0 };
 
             if (sig_reg[0] >= 1) {
                 u32 features;
-                cpuid(features, sig_reg[1], sig_reg[2], sig_reg[3], 1, 2);
+                Cpuid(features, sig_reg[1], sig_reg[2], sig_reg[3], 1, 2);
 
                 auto strconvert = [](unsigned long long n) -> std::string {
                     const std::string& str(reinterpret_cast<char*>(&n));
@@ -88,7 +133,7 @@ private:
     }
 
     // fetch CPU vendor
-    std::string GetCpuVendor() {
+    static std::string GetCpuVendor() {
         using u32 = unsigned int;
         std::array<u32, 4> buffer{};
         constexpr size_t buffer_size = sizeof(int) * buffer.size();
@@ -97,17 +142,8 @@ private:
         std::string brand = "";
 
         if (CheckCpuid()) {
-            auto cpuid = [](u32& a, u32& b, u32& c, u32& d, const u32 a_leaf, const u32 c_leaf = 0xFF) {
-                int x[4];
-                __cpuidex(x, a_leaf, c_leaf);
-                a = static_cast<u32>(x[0]);
-                b = static_cast<u32>(x[1]);
-                c = static_cast<u32>(x[2]);
-                d = static_cast<u32>(x[3]);
-            };
-
             for (const u32& id : ids) {
-                cpuid(buffer.at(0), buffer.at(1), buffer.at(2), buffer.at(3), id);
+                Cpuid(buffer.at(0), buffer.at(1), buffer.at(2), buffer.at(3), id);
 
                 std::memcpy(charbuffer.data(), buffer.data(), buffer_size);
                 const char* convert = charbuffer.data();
@@ -119,7 +155,7 @@ private:
     }
 
     // fetch thread count
-    unsigned int GetThreadCount() {
+    static unsigned int GetThreadCount() {
         return std::thread::hardware_concurrency();
     }
 
@@ -129,11 +165,11 @@ public:
     HWID(HWID&&) = delete; // Delete move constructor
 
     // Main function to get HWID
-    std::string GetHWID() {
+    static std::string GetHWID() {
         std::string hwid = GetCpuBrand() + GetCpuVendor();
         hwid += std::to_string(GetThreadCount());
-        hwid += std::to_string(GetMacAddress());
-        hwid += std::to_string(GetBiosSerial());
+        //hwid += std::to_string(GetMacAddress());
+        //hwid += std::to_string(GetBiosSerial());
 
         // Truncate or hash the combined string to 20 characters if needed
         if (hwid.length() > 20) {

@@ -22,10 +22,10 @@ endif()
 # fetch and set build type
 set(available_build_types Debug Release)
 if(NOT CMAKE_BUILD_TYPE)
-set(CMAKE_BUILD_TYPE Release CACHE STRING "Choose the type of build (Debug or Release)" FORCE)
+    set(CMAKE_BUILD_TYPE Release CACHE STRING "Choose the type of build (Debug or Release)" FORCE)
 endif()
 if(NOT CMAKE_BUILD_TYPE IN_LIST available_build_types)
-MESSAGE(FATAL_ERROR "Invalid build type: ${CMAKE_BUILD_TYPE}. Allowed values: ${available_build_types}")
+    MESSAGE(FATAL_ERROR "Invalid build type: ${CMAKE_BUILD_TYPE}. Allowed values: ${available_build_types}")
 endif()
 
 
@@ -52,14 +52,9 @@ if (NOT MSVC)
 endif()
 
 
-# CTest stuff
-include(CTest)
-enable_testing()
-
-
 # add executable
-//set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/bin")
+#set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/bin")
 add_executable(${TARGET} "src/test.cpp")
 set_property(TARGET ${TARGET} PROPERTY CXX_STANDARD 20)
 set_property(TARGET ${TARGET} PROPERTY CXX_STANDARD_REQUIRED ON)
-//add_test(Test_1, "${CMAKE_SOURCE_DIR}/bin/${TARGET}")
+#add_test(Test_1, "${CMAKE_SOURCE_DIR}/bin/${TARGET}")
