@@ -17,7 +17,7 @@
 #include <iostream>
 
 int main() {
-    std::cout << GetHWID() << "\n";
+    std::cout << HWID::GetHWID() << "\n";
     return 0;
 }
 ```

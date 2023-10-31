@@ -2,5 +2,5 @@
 #include "hwidex.h"
 
 int main() {
-    std::cout << "HWID: " << GetHWID() << "\n";
+    std::cout << "HWID: " << HWID::GetHWID() << "\n";
 }
