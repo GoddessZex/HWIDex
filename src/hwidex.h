@@ -6,6 +6,7 @@
 #include <array>
 #include <thread>
 #include <cstring>
+#include <functional>
 #include <iostream> // temporary
 
 
@@ -51,6 +52,8 @@ struct HWID {
 private:
     using u32 = std::uint32_t;
     using i32 = std::int32_t;
+    using ptr = std::string(*)();
+    using funcs = std::array<ptr, 3>;
 
     // check for cpuid presence and accessibility
     static inline bool CheckCpuid() noexcept {
@@ -155,9 +158,24 @@ private:
     }
 
     // fetch thread count
-    static unsigned int GetThreadCount() {
-        return std::thread::hardware_concurrency();
+    static std::string GetThreadCount() {
+        return std::to_string(std::thread::hardware_concurrency());
     }
+
+    static std::size_t hasher(const funcs& inputs) {
+        std::size_t result = 0; // possibility of overflow on purpose
+
+        for (const auto func : inputs) {
+            std::hash<std::string> hash_invoke;
+            result += hash_invoke(std::invoke(func));
+        }
+
+        return result;
+    }
+
+    static constexpr funcs inputs {
+        GetCpuBrand, GetCpuVendor, GetThreadCount
+    };
 
 public:
     HWID() = delete; // Delete default constructor
@@ -166,11 +184,8 @@ public:
 
     // Main function to get HWID
     static std::string GetHWID() {
-        std::string hwid = GetCpuBrand() + GetCpuVendor();
-        hwid += std::to_string(GetThreadCount());
-        //hwid += std::to_string(GetMacAddress());
-        //hwid += std::to_string(GetBiosSerial());
-
+        std::size_t initial_hash = hasher(inputs);
+        std::string hwid = std::to_string(initial_hash);
         // Truncate or hash the combined string to 20 characters if needed
         if (hwid.length() > 20) {
             hwid = hwid.substr(0, 20); // Truncate to 20 characters
@@ -178,4 +193,10 @@ public:
 
         return hwid;
     }
+/*
+    // Optional for a lighter output with raw numbers than a string 
+    static std::size_t GetHWID() {
+        return hasher(inputs);
+    }
+*/
 };
