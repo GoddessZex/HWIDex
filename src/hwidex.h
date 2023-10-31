@@ -19,7 +19,7 @@
 
 /**
  * ===== STAGES =====
- * 1. create functions for vendor, brand, thread count, BIOS serial, etc...
+ * 1. create functions for vendor, brand, thread count, BIOS serial, etc... [IN PROGRESS]
  * 2. invoke all of them into a std::vector
  * 3. merge all of the results in the vector into a single hash
  * 4. return it as a 20-character std::string
