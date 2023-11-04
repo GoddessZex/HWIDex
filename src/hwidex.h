@@ -52,8 +52,7 @@ struct HWID {
 private:
     using u32 = std::uint32_t;
     using i32 = std::int32_t;
-    using ptr = std::string(*)();
-    using funcs = std::array<ptr, 3>;
+    using funcs = std::array<std::string(*)(), 4>;
 
     // check for cpuid presence and accessibility
     static inline bool CheckCpuid() noexcept {
@@ -112,24 +111,26 @@ private:
 
     // fetch CPU brand
     static std::string GetCpuBrand() {
+        if (!CheckCpuid()) {
+            return "";
+        }
+
         std::stringstream ss;
+        
+        u32 sig_reg[3] = { 0 };
 
-        if (CheckCpuid()) {
-            u32 sig_reg[3] = { 0 };
+        if (sig_reg[0] >= 1) {
+            u32 features;
+            Cpuid(features, sig_reg[1], sig_reg[2], sig_reg[3], 1, 2);
 
-            if (sig_reg[0] >= 1) {
-                u32 features;
-                Cpuid(features, sig_reg[1], sig_reg[2], sig_reg[3], 1, 2);
+            auto strconvert = [](unsigned long long n) -> std::string {
+                const std::string& str(reinterpret_cast<char*>(&n));
+                return str;
+            };
 
-                auto strconvert = [](unsigned long long n) -> std::string {
-                    const std::string& str(reinterpret_cast<char*>(&n));
-                    return str;
-                };
-
-                ss << strconvert(sig_reg[0]);
-                ss << strconvert(sig_reg[2]);
-                ss << strconvert(sig_reg[1]);
-            }
+            ss << strconvert(sig_reg[0]);
+            ss << strconvert(sig_reg[2]);
+            ss << strconvert(sig_reg[1]);
         }
 
         return ss.str();
@@ -137,6 +138,10 @@ private:
 
     // fetch CPU vendor
     static std::string GetCpuVendor() {
+        if (!CheckCpuid()) {
+            return "";
+        }
+
         using u32 = unsigned int;
         std::array<u32, 4> buffer{};
         constexpr size_t buffer_size = sizeof(int) * buffer.size();
@@ -144,14 +149,12 @@ private:
         constexpr std::array<u32, 3> ids = { 0x80000002, 0x80000003, 0x80000004 };
         std::string brand = "";
 
-        if (CheckCpuid()) {
-            for (const u32& id : ids) {
-                Cpuid(buffer.at(0), buffer.at(1), buffer.at(2), buffer.at(3), id);
+        for (const u32& id : ids) {
+            Cpuid(buffer.at(0), buffer.at(1), buffer.at(2), buffer.at(3), id);
 
-                std::memcpy(charbuffer.data(), buffer.data(), buffer_size);
-                const char* convert = charbuffer.data();
-                brand += convert;
-            }
+            std::memcpy(charbuffer.data(), buffer.data(), buffer_size);
+            const char* convert = charbuffer.data();
+            brand += convert;
         }
 
         return brand;
@@ -173,8 +176,23 @@ private:
         return result;
     }
 
+    static std::string GetCpuidHash() {
+        int cpuInfo[4] = { 0 };
+        Cpuid(cpuInfo, 0);
+        unsigned int* ptr = reinterpret_cast<unsigned int*>(cpuInfo);
+        std::string cpuId;
+
+        for (int i = 0; i < 4; ++i) {
+            cpuId += std::to_string(ptr[i]);
+        }
+
+        return cpuId;
+    }
+
+
+    // function lists
     static constexpr funcs inputs {
-        GetCpuBrand, GetCpuVendor, GetThreadCount
+        GetCpuBrand, GetCpuVendor, GetThreadCount, GetCpuidHash
     };
 
 public:
