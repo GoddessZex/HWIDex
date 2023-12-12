@@ -22,7 +22,7 @@ int main() {
 }
 ```
 
-
+## (Unmaintained cuz Kernel is a fat nigger)
 ## Credits ✒️
 - [GoddessZex](https://github.com/GoddessZex)
 - [kernelwernel](https://github.com/kernelwernel)
